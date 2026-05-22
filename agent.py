@@ -15,7 +15,7 @@ from google import genai
 from google.genai import types
 
 # ── Config ────────────────────────────────────────────────────────────────────
-MCP_URL = "http://localhost:8000/mcp"
+MCP_URL = "https://lapor-pak-415ea445196f.herokuapp.com/"
 # Menggunakan model flagship terbaru Gemini 2.5 Flash / Pro
 MODEL   = "gemini-2.5-flash" 
 
