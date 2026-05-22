@@ -20,7 +20,7 @@ MCP_URL = "http://localhost:8000/mcp"
 MODEL   = "gemini-2.5-flash" 
 
 # Inisialisasi client (pastikan sudah export GEMINI_API_KEY="api-kamu" di terminal)
-client = genai.Client("AIzaSyBDVXiqoDDbnrUdVDe1CoXYZk4TxavWZsA")
+client = genai.Client()
 
 # ── Python Functions sebagai Tools ───────────────────────────────────────────
 # Berbeda dengan Anthropic yang pakai skema JSON rumit, Gemini bisa langsung 
