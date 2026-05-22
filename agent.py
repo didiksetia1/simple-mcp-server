@@ -15,12 +15,12 @@ from google import genai
 from google.genai import types
 
 # ── Config ────────────────────────────────────────────────────────────────────
-MCP_URL = "https://lapor-pak-415ea445196f.herokuapp.com/"
+MCP_URL = "https://lapor-pak-415ea445196f.herokuapp.com/mcp"
 # Menggunakan model flagship terbaru Gemini 2.5 Flash / Pro
 MODEL   = "gemini-2.5-flash" 
 
 # Inisialisasi client (pastikan sudah export GEMINI_API_KEY="api-kamu" di terminal)
-client = genai.Client()
+client = genai.Client(api_key="AIzaSyCEpM3w0C-D-c8QHWPBLZA23voj1GwWiSk")
 
 # ── Python Functions sebagai Tools ───────────────────────────────────────────
 # Berbeda dengan Anthropic yang pakai skema JSON rumit, Gemini bisa langsung 
