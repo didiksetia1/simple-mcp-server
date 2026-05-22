@@ -1,47 +1,34 @@
-"""
-agent_gemini.py — AI Agent yang connect ke MCP server (main.py) dengan auto tool calling menggunakan Gemini.
-
-Cara pakai:
-    pip install google-genai requests
-    python agent_gemini.py
-
-Pastikan MCP server sudah jalan:
-    uvicorn main:app --reload --port 8000
-"""
-
+import os
 import json
+import time
 import requests
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError
+from dotenv import load_dotenv
+
+# Muat file .env otomatis
+load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 MCP_URL = "https://lapor-pak-415ea445196f.herokuapp.com/mcp"
-# Menggunakan model flagship terbaru Gemini 2.5 Flash / Pro
 MODEL   = "gemini-2.5-flash" 
 
-# Inisialisasi client (pastikan sudah export GEMINI_API_KEY="api-kamu" di terminal)
-client = genai.Client(api_key="AIzaSyCEpM3w0C-D-c8QHWPBLZA23voj1GwWiSk")
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("[Error] API Key tidak ditemukan di file .env!")
+    exit(1)
 
-# ── Python Functions sebagai Tools ───────────────────────────────────────────
-# Berbeda dengan Anthropic yang pakai skema JSON rumit, Gemini bisa langsung 
-# membaca fungsi Python biasa (berkat bantuan Type Hints dan Docstring).
+client = genai.Client(api_key=api_key)
 
+# ── Tools Definition ──────────────────────────────────────────────────────────
 def get_stock(product: str) -> str:
-    """Cek stok produk di gudang ERP.
-    
-    Args:
-        product: Nama produk, misal: laptop, mouse, keyboard
-    """
+    """Cek stok produk di gudang ERP."""
     payload = {"tool": "get_stock", "input": {"product": product}}
     return call_mcp(payload)
 
 def create_order(product: str, qty: int) -> str:
-    """Buat pesanan / order baru untuk suatu produk.
-    
-    Args:
-        product: Nama produk yang dipesan
-        qty: Jumlah unit yang dipesan
-    """
+    """Buat pesanan / order baru untuk suatu produk."""
     payload = {"tool": "create_order", "input": {"product": product, "qty": qty}}
     return call_mcp(payload)
 
@@ -50,15 +37,12 @@ def list_orders() -> str:
     payload = {"tool": "list_orders", "input": {}}
     return call_mcp(payload)
 
-
-# ── Panggil MCP server ────────────────────────────────────────────────────────
 def call_mcp(payload: dict) -> str:
-    """Kirim tool call ke MCP server, return hasil sebagai string JSON."""
-    print(f"  [tool] {payload['tool']}({json.dumps(payload['input'], ensure_ascii=False)})")
+    print(f"  [tool] {payload['tool']}({json.dumps(payload['input'])})")
     try:
         resp = requests.post(MCP_URL, json=payload, timeout=10)
         resp.raise_for_status()
-        result_str = json.dumps(resp.json(), ensure_ascii=False)
+        result_str = json.dumps(resp.json())
         print(f"  [result] {result_str}")
         return result_str
     except requests.RequestException as e:
@@ -66,56 +50,49 @@ def call_mcp(payload: dict) -> str:
         print(f"  [result] {error_str}")
         return error_str
 
-# ── Agentic loop ──────────────────────────────────────────────────────────────
-def run_agent(user_message: str) -> str:
-    """Jalankan agent menggunakan fitur Auto Function Calling milik Gemini."""
-    
-    # Daftarkan fungsi Python di atas sebagai tools
-    my_tools = [get_stock, create_order, list_orders]
-    
-    # Konfigurasi agar Gemini otomatis mengeksekusi fungsi lokal jika dibutuhkan
-    config = types.GenerateContentConfig(
-        tools=my_tools,
-        temperature=0.0, # Rendah agar agent lebih presisi memilih tool
-    )
-    
-    # Panggil Gemini. Loop chat, eksekusi tool, dan pengiriman balik hasil 
-    # dihandle otomatis di balik layar oleh SDK google-genai.
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=user_message,
-        config=config
-    )
-    
-    return response.text
+# ── Inisialisasi Chat Session dengan Tools ────────────────────────────────────
+my_tools = [get_stock, create_order, list_orders]
+config = types.GenerateContentConfig(tools=my_tools, temperature=0.0)
+chat_session = client.chats.create(model=MODEL, config=config)
 
-# ── CLI interaktif ────────────────────────────────────────────────────────────
+# ── Fungsi Pengaman Anti-Crash (Safe Request) ─────────────────────────────────
+def send_message_with_retry(message: str, max_retries=3, delay=4):
+    """Mengirim pesan ke Gemini dengan fitur auto-retry jika terkena limit/beban padat."""
+    for attempt in range(max_retries):
+        try:
+            response = chat_session.send_message(message)
+            return response.text
+        except APIError as e:
+            # Jika error 429 (Quota) atau 503 (Server Overload)
+            if e.code in [429, 503]:
+                if attempt < max_retries - 1:
+                    print(f"\n  [Server Sibuk/Quota Limit] Mencoba kembali dalam {delay} detik... (Percobaan {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                    continue
+            return f"\n[Gagal] Google Server sedang sangat sibuk (Error {e.code}). Silakan coba lagi beberapa saat lagi."
+        except Exception as e:
+            return f"\n[Error Tidak Diketahui]: {str(e)}"
+
+# ── Main Loop ─────────────────────────────────────────────────────────────────
 def main():
     print("=" * 55)
-    print("  ERP AI Agent (Gemini)  |  ketik 'exit' untuk keluar")
+    print("  ERP AI Agent (Gemini Anti-Crash) | ketik 'exit' untuk keluar")
     print("=" * 55)
-    print("Contoh perintah:")
-    print("  • Berapa stok laptop?")
-    print("  • Pesan 3 unit mouse")
-    print("  • Tampilkan semua order")
-    print("-" * 55)
 
     while True:
         try:
             user_input = input("\nAnda: ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nBye!")
             break
 
-        if not user_input:
-            continue
-        if user_input.lower() in {"exit", "quit", "keluar"}:
-            print("Bye!")
-            break
+        if not user_input: continue
+        if user_input.lower() in {"exit", "quit", "keluar"}: break
 
         print("Agent: ", end="", flush=True)
-        answer = run_agent(user_input)
-        print(answer)
+        
+        # Panggil fungsi pengaman
+        reply = send_message_with_retry(user_input)
+        print(reply)
 
 if __name__ == "__main__":
     main()

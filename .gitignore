@@ -1,1 +1,6 @@
-agent.py
+# Sembunyikan API Key dan kredensial rahasia (WAJIB)
+.env
+
+# Sembunyikan folder cache Python agar repositori GitHub bersih
+__pycache__/
+*.pyc

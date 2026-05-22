@@ -93,3 +93,8 @@ def list_orders():
         return {"orders": orders_list}
     finally:
         db.close()
+
+def tambah_stok(product: str, qty: int) -> str:
+    """Menambahkan atau mengisi ulang stok produk di gudang ERP."""
+    payload = {"tool": "tambah_stok", "input": {"product": product, "qty": qty}}
+    return call_mcp(payload)
