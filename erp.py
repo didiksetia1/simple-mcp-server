@@ -6,7 +6,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 # Jika dijalankan lokal/tidak diisi di Heroku, otomatis pakai cadangan MySQL Docker Codespaces
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "mysql+pymysql://app_user:password123@localhost:3306/app_db"
+    "mysql+pymysql://root:root@opulent-memory-p64v56q96j27x5v-3306.app.github.dev:443/latihan_db"
 )
 
 # Trik khusus Heroku: Jika sewaktu-waktu beralih ke Heroku Postgres kembali
