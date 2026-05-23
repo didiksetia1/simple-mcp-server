@@ -4,3 +4,5 @@ requests
 google-genai
 sqlalchemy
 psycopg2-binary
+pymysql
+cryptography
