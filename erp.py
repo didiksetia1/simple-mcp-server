@@ -3,12 +3,13 @@ from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # 1. Ambil URL Database dari Heroku secara otomatis (Config Vars)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "mysql+pymysql://root:root@opulent-memory-p64v56q96j27x5v-3306.app.github.dev:443/latihan_db"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Trik khusus Heroku: Jika sewaktu-waktu beralih ke Heroku Postgres kembali
+# Jika dijalankan di lokal laptop (tidak ada DATABASE_URL dari Heroku), pakai cadangan Postgres lokal jika ada
+if not DATABASE_URL:
+    DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/latihan_db"
+
+# Trik khusus Heroku: Memperbaiki skema URL Postgres bawaan Heroku agar kompatibel dengan SQLAlchemy 1.4/2.0
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
